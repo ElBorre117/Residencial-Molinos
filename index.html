@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CondoAdmin — Gestión de Condominio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ============================================================
+     AUTH SCREEN
+     ============================================================ -->
+<div id="authScreen">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">CondoAdmin</div>
+      <div class="auth-sub">Sistema de gestión de condominio</div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuth('login')">Iniciar sesión</button>
+        <button class="auth-tab" onclick="switchAuth('register')">Registrarse</button>
+      </div>
+      <div id="alertAuth"></div>
+
+      <!-- LOGIN -->
+      <div id="formLogin">
+        <div class="field">
+          <label>Correo electrónico</label>
+          <input type="email" id="loginEmail" placeholder="tu@correo.com">
+        </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <input type="password" id="loginPass" placeholder="••••••••">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="doLogin()">Entrar</button>
+        <p style="font-size:12px;color:var(--c-text-3);text-align:center;margin-top:12px;cursor:pointer" onclick="showOTP()">
+          ¿Prefiero usar código OTP por correo →
+        </p>
+        <div style="margin-top:12px;padding:10px;background:var(--c-blue-light);border-radius:var(--r-sm);font-size:12px;color:var(--c-blue)">
+          <strong>Demo:</strong> admin@condo.com / admin123 → admin<br>
+          admin2@condo.com / res123 → residente depto 101
+        </div>
+      </div>
+
+      <!-- OTP -->
+      <div id="formOTP" class="hidden">
+        <div class="field">
+          <label>Teléfono o correo</label>
+          <input type="text" id="otpContact" placeholder="+52 555 000 0000 o tu@correo.com">
+        </div>
+        <button class="btn btn-secondary btn-full" onclick="sendOTP()">Enviar código OTP</button>
+        <div id="otpCodeField" class="hidden" style="margin-top:1rem">
+          <div class="field">
+            <label>Código de 6 dígitos</label>
+            <input type="text" id="otpCode" placeholder="000000" maxlength="6">
+          </div>
+          <button class="btn btn-primary btn-full" onclick="verifyOTP()">Verificar y entrar</button>
+        </div>
+      </div>
+
+      <!-- REGISTER -->
+      <div id="formRegister" class="hidden">
+        <div class="field"><label>Nombre completo</label><input type="text" id="regName" placeholder="Juan García"></div>
+        <div class="field"><label>Correo electrónico</label><input type="email" id="regEmail" placeholder="tu@correo.com"></div>
+        <div class="field"><label>Teléfono</label><input type="tel" id="regPhone" placeholder="+52 555 000 0000"></div>
+        <div class="field"><label>Contraseña</label><input type="password" id="regPass" placeholder="Mínimo 8 caracteres"></div>
+        <button class="btn btn-primary btn-full" onclick="doRegister()">Crear cuenta</button>
+        <p style="font-size:11px;color:var(--c-text-3);text-align:center;margin-top:10px">
+          Al registrarte, el administrador verificará tu departamento
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     MAIN APP
+     ============================================================ -->
+<div id="appScreen" class="hidden">
+  <div class="app">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-logo">CondoAdmin <span id="condoName">Torre Residencial</span></div>
+
+      <nav class="nav" id="navMain">
+
+        <!-- ADMIN NAV -->
+        <div id="navAdminFull" class="hidden">
+          <div class="nav-section">Principal</div>
+          <div class="nav-item active" onclick="goTo('dashboard')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <span>Dashboard</span>
+          </div>
+
+          <div class="nav-section">Administración</div>
+          <div id="navAdmin" class="hidden">
+            <div class="nav-item" onclick="goTo('residents')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>Residentes
+                <span id="pendingResCount" class="hidden" style="background:var(--c-amber);color:white;font-size:10px;padding:1px 6px;border-radius:99px;margin-left:4px">0</span>
+              </span>
+            </div>
+            <div class="nav-item" onclick="goTo('payments')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              <span>Comprobantes
+                <span id="pendingPayCount" class="hidden" style="background:var(--c-amber);color:white;font-size:10px;padding:1px 6px;border-radius:99px;margin-left:4px">0</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="nav-section">Finanzas</div>
+          <div class="nav-item" onclick="goTo('finances')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            <span>Ingresos / Egresos</span>
+          </div>
+          <div class="nav-item" onclick="goTo('reports')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span>Reportes</span>
+          </div>
+        </div>
+
+        <!-- RESIDENT NAV — minimal -->
+        <div id="navResident" class="hidden">
+          <div class="nav-item active" onclick="goTo('myPayments')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            <span>Mis pagos</span>
+          </div>
+          <div class="nav-item" onclick="goTo('contacts')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.69a16 16 0 0 0 6 6l.72-.97a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 21.28 16z"/></svg>
+            <span>Contactos</span>
+          </div>
+        </div>
+
+      </nav>
+
+      <div class="sidebar-user">
+        <div class="sidebar-user-name" id="sidebarName">—</div>
+        <div class="sidebar-user-role" id="sidebarRole">—</div>
+        <div class="sidebar-user-btn" onclick="doLogout()">Cerrar sesión</div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+
+      <!-- ── DASHBOARD ─────────────────────────────────── -->
+      <div id="pageDashboard" class="page active">
+        <div class="page-header">
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub" id="dashWelcome">Bienvenido</div>
+        </div>
+        <div class="metrics" id="metricsArea"></div>
+        <div class="chart-grid">
+          <div class="card">
+            <div class="card-head"><span class="card-title">Flujo mensual</span></div>
+            <div class="card-body"><div class="chart-wrap"><canvas id="chartFlow"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><span class="card-title">Distribución egresos</span></div>
+            <div class="card-body"><div class="chart-wrap"><canvas id="chartDist"></canvas></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">Actividad reciente</span></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Monto</th><th>Estado</th></tr></thead>
+              <tbody id="recentActivity"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── RESIDENTS (ADMIN) ──────────────────────────── -->
+      <div id="pageResidents" class="page">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="page-title">Residentes</div>
+            <div class="page-sub">Gestiona y verifica los departamentos</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openModalAddResident()">+ Agregar residente</button>
+        </div>
+        <div class="card" style="margin-bottom:1rem">
+          <div class="card-head">
+            <span class="card-title">Pendientes de verificación
+              <span id="pendingBadge" class="badge badge-pending">0</span>
+            </span>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nombre</th><th>Depto</th><th>Correo</th><th>Teléfono</th><th>Fecha</th><th>Acciones</th></tr></thead>
+              <tbody id="tblPendingResidents"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Todos los residentes</span>
+            <input type="text" id="searchResident" placeholder="Buscar..."
+              style="width:180px;padding:5px 10px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:13px"
+              oninput="renderResidents()">
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nombre</th><th>Depto</th><th>Estado</th><th>Correo</th><th>Acciones</th></tr></thead>
+              <tbody id="tblAllResidents"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PAYMENTS (ADMIN) ───────────────────────────── -->
+      <div id="pagePayments" class="page">
+        <div class="page-header">
+          <div class="page-title">Comprobantes de pago</div>
+          <div class="page-sub">Verifica y genera recibos</div>
+        </div>
+        <div class="card" style="margin-bottom:1rem">
+          <div class="card-head">
+            <span class="card-title">Pendientes de revisión
+              <span id="payPendingBadge" class="badge badge-pending">0</span>
+            </span>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Residente</th><th>Depto</th><th>Mes</th><th>Monto</th><th>Fecha envío</th><th>Comprobante</th><th>Acciones</th></tr></thead>
+              <tbody id="tblPendingPayments"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Historial de pagos</span>
+            <select id="filterPayMonth"
+              style="padding:5px 10px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:13px"
+              onchange="renderPayments()">
+              <option value="">Todos los meses</option>
+              <option>Enero 2026</option><option>Febrero 2026</option><option>Marzo 2026</option>
+              <option>Abril 2026</option><option>Mayo 2026</option><option>Junio 2026</option>
+            </select>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Residente</th><th>Depto</th><th>Mes</th><th>Monto</th><th>Estado</th><th>Recibo</th></tr></thead>
+              <tbody id="tblAllPayments"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── FINANCES ───────────────────────────────────── -->
+      <div id="pageFinances" class="page">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+          <div>
+            <div class="page-title">Ingresos y egresos</div>
+            <div class="page-sub">Registro completo del flujo de dinero</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-success btn-sm" onclick="openModalTransaction('income')">+ Ingreso</button>
+            <button class="btn btn-danger btn-sm"  onclick="openModalTransaction('expense')">+ Egreso</button>
+            <button class="btn btn-secondary btn-sm" onclick="openModalImport()">⬆ Importar CSV</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ Exportar</button>
+          </div>
+        </div>
+        <div class="metrics" id="finMetrics"></div>
+        <div class="card" style="margin-bottom:1rem">
+          <div class="card-head">
+            <span class="card-title">Todas las transacciones</span>
+            <div style="display:flex;gap:8px">
+              <select id="filterFinType"
+                style="padding:5px 10px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:13px"
+                onchange="renderFinances()">
+                <option value="">Todo</option>
+                <option value="income">Solo ingresos</option>
+                <option value="expense">Solo egresos</option>
+              </select>
+              <select id="filterFinCat"
+                style="padding:5px 10px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:13px"
+                onchange="renderFinances()">
+                <option value="">Todas categorías</option>
+              </select>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Tipo</th><th>Monto</th><th>Referencia</th><th>Acciones</th></tr></thead>
+              <tbody id="tblFinances"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── REPORTS ────────────────────────────────────── -->
+      <div id="pageReports" class="page">
+        <div class="page-header">
+          <div class="page-title">Reportes</div>
+          <div class="page-sub">Resúmenes y exportación de datos</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:1.5rem">
+          <div class="card" style="padding:1.25rem;cursor:pointer">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px">Reporte de cobros</div>
+            <div style="font-size:12px;color:var(--c-text-2)">Resumen mensual de mantenimiento por departamento</div>
+            <div style="margin-top:12px;font-size:12px;color:var(--c-teal);font-weight:500">Generar PDF →</div>
+          </div>
+          <div class="card" style="padding:1.25rem;cursor:pointer">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px">Balance financiero</div>
+            <div style="font-size:12px;color:var(--c-text-2)">Ingresos vs egresos por período seleccionado</div>
+            <div style="margin-top:12px;font-size:12px;color:var(--c-teal);font-weight:500">Exportar Excel →</div>
+          </div>
+          <div class="card" style="padding:1.25rem;cursor:pointer">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px">Cartera vencida</div>
+            <div style="font-size:12px;color:var(--c-text-2)">Residentes con pagos pendientes o rechazados</div>
+            <div style="margin-top:12px;font-size:12px;color:var(--c-red);font-weight:500">Ver lista →</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">Estado de cobros — Junio 2026</span></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Depto</th><th>Residente</th><th>Cuota mensual</th><th>Estado</th><th>Fecha pago</th></tr></thead>
+              <tbody id="tblReport"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── MY PAYMENTS (RESIDENT) ─────────────────────── -->
+      <div id="pageMyPayments" class="page">
+        <div id="deptoVerifAlert"></div>
+
+        <!-- depto info banner -->
+        <div id="residentBanner" style="background:var(--c-teal);border-radius:var(--r-lg);padding:1.25rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Mi departamento</div>
+            <div style="font-size:26px;font-weight:700;color:white;letter-spacing:-0.5px" id="resDeptoNum">—</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px" id="resDeptoStatus">—</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Cuota mensual</div>
+            <div style="font-size:22px;font-weight:700;color:white" id="resFeeDisplay">—</div>
+          </div>
+        </div>
+
+        <!-- upload CTA -->
+        <div id="uploadCTAArea" style="margin-bottom:1.5rem">
+          <div style="background:var(--c-surface);border:2px dashed var(--c-teal-mid);border-radius:var(--r-lg);padding:2rem;text-align:center;cursor:pointer"
+               onclick="openModalUploadPayment()">
+            <div style="width:52px;height:52px;background:var(--c-teal-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--c-teal)" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <div style="font-size:15px;font-weight:600;color:var(--c-teal);margin-bottom:4px">Subir comprobante de pago</div>
+            <div style="font-size:13px;color:var(--c-text-2)">Toca para enviar tu transferencia o depósito del mes</div>
+          </div>
+        </div>
+
+        <!-- history -->
+        <div class="card">
+          <div class="card-head"><span class="card-title">Mis pagos</span></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Mes</th><th>Monto</th><th>Enviado</th><th>Estado</th><th>Recibo</th></tr></thead>
+              <tbody id="tblMyPayments"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CONTACTS (RESIDENT) ────────────────────────── -->
+      <div id="pageContacts" class="page">
+        <div class="page-header">
+          <div class="page-title">Contactos</div>
+          <div class="page-sub">Administración y caseta del condominio</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:1.5rem">
+
+          <!-- Administración -->
+          <div class="card" style="padding:1.5rem">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem">
+              <div style="width:44px;height:44px;border-radius:50%;background:var(--c-teal-light);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--c-teal)" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              </div>
+              <div>
+                <div style="font-size:15px;font-weight:600">Administración</div>
+                <div style="font-size:12px;color:var(--c-text-3)">Oficina general</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <a href="tel:+525512345678" class="contact-row teal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-teal)" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.69a16 16 0 0 0 6 6l.72-.97a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 21.28 16z"/></svg>
+                <div><div class="cr-main">+52 55 1234 5678</div><div class="cr-sub">Línea principal</div></div>
+              </a>
+              <a href="tel:+525587654321" class="contact-row teal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-teal)" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                <div><div class="cr-main">+52 55 8765 4321</div><div class="cr-sub">Celular administrador</div></div>
+              </a>
+              <a href="https://wa.me/525587654321" target="_blank" class="contact-row green">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                <div><div class="cr-main">WhatsApp</div><div class="cr-sub">Mensajes y comprobantes</div></div>
+              </a>
+              <a href="mailto:admin@condoresidencial.com" class="contact-row teal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-teal)" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <div><div class="cr-main">admin@condoresidencial.com</div><div class="cr-sub">Correo electrónico</div></div>
+              </a>
+            </div>
+            <div style="margin-top:12px;padding:10px 12px;background:var(--c-bg);border-radius:var(--r-md);font-size:12px;color:var(--c-text-2)">
+              <span style="font-weight:500;color:var(--c-text)">Horario:</span> Lun–Vie 9:00–18:00 · Sáb 9:00–13:00
+            </div>
+          </div>
+
+          <!-- Caseta -->
+          <div class="card" style="padding:1.5rem">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem">
+              <div style="width:44px;height:44px;border-radius:50%;background:var(--c-amber-light);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--c-amber)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div>
+                <div style="font-size:15px;font-weight:600">Caseta de seguridad</div>
+                <div style="font-size:12px;color:var(--c-text-3)">Vigilancia 24/7</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <a href="tel:+525511112222" class="contact-row amber">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-amber)" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.69a16 16 0 0 0 6 6l.72-.97a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 21.28 16z"/></svg>
+                <div><div class="cr-main">+52 55 1111 2222</div><div class="cr-sub">Línea directa caseta</div></div>
+              </a>
+              <a href="tel:+525533334444" class="contact-row amber">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-amber)" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                <div><div class="cr-main">+52 55 3333 4444</div><div class="cr-sub">Celular guardia</div></div>
+              </a>
+              <a href="https://wa.me/525533334444" target="_blank" class="contact-row green">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                <div><div class="cr-main">WhatsApp caseta</div><div class="cr-sub">Visitas y accesos</div></div>
+              </a>
+            </div>
+            <div style="margin-top:12px;padding:10px 12px;background:var(--c-amber-light);border-radius:var(--r-md);font-size:12px;color:var(--c-amber);font-weight:500;display:flex;align-items:center;gap:6px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Servicio activo las 24 horas, los 365 días
+            </div>
+          </div>
+        </div>
+
+        <!-- Emergencies -->
+        <div class="card" style="padding:1.25rem">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px">Números de emergencia</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">
+            <a href="tel:911" class="emerg-btn red">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div><div class="eb-num">911</div><div class="eb-label">Emergencias</div></div>
+            </a>
+            <a href="tel:080" class="emerg-btn blue">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
+              <div><div class="eb-num">080</div><div class="eb-label">Bomberos</div></div>
+            </a>
+            <a href="tel:+525555555555" class="emerg-btn green">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.69a16 16 0 0 0 6 6l.72-.97a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 21.28 16z"/></svg>
+              <div><div class="eb-num" style="font-size:11px">55 5555 5555</div><div class="eb-label">Plomería</div></div>
+            </a>
+            <a href="tel:+525566667777" class="emerg-btn purple">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              <div><div class="eb-num" style="font-size:11px">55 6666 7777</div><div class="eb-label">Electricidad</div></div>
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+  </div><!-- /app -->
+</div><!-- /appScreen -->
+
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- Receipt -->
+<div class="modal-overlay" id="modalReceipt">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-head"><span class="modal-title">Recibo generado</span><button class="modal-close" onclick="closeModal('modalReceipt')">✕</button></div>
+    <div class="modal-body"><div class="receipt" id="receiptContent"></div></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="printReceipt()">Imprimir / PDF</button>
+      <button class="btn btn-primary"   onclick="closeModal('modalReceipt')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transaction -->
+<div class="modal-overlay" id="modalTransaction">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title" id="transModalTitle">Nuevo ingreso</span><button class="modal-close" onclick="closeModal('modalTransaction')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="transType" value="income">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label>Fecha</label><input type="date" id="transDate"></div>
+        <div class="field"><label>Monto (MXN)</label><input type="number" id="transAmount" placeholder="1500.00" step="0.01"></div>
+      </div>
+      <div class="field"><label>Descripción</label><input type="text" id="transDesc" placeholder="Pago mantenimiento depto 101"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label>Categoría</label>
+          <select id="transCat">
+            <option>Mantenimiento</option><option>Limpieza</option><option>Seguridad</option>
+            <option>Reparaciones</option><option>Servicios</option><option>Administración</option><option>Otros</option>
+          </select>
+        </div>
+        <div class="field"><label>Referencia / Factura</label><input type="text" id="transRef" placeholder="REF-001"></div>
+      </div>
+      <div class="field"><label>Notas (opcional)</label><textarea id="transNotes" placeholder="Información adicional..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modalTransaction')">Cancelar</button>
+      <button class="btn btn-primary"   onclick="saveTransaction()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Payment -->
+<div class="modal-overlay" id="modalUploadPayment">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Subir comprobante de pago</span><button class="modal-close" onclick="closeModal('modalUploadPayment')">✕</button></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label>Mes de pago</label>
+          <select id="payMonth">
+            <option>Enero 2026</option><option>Febrero 2026</option><option>Marzo 2026</option>
+            <option>Abril 2026</option><option>Mayo 2026</option><option selected>Junio 2026</option>
+          </select>
+        </div>
+        <div class="field"><label>Monto pagado (MXN)</label><input type="number" id="payAmount" placeholder="1500.00"></div>
+      </div>
+      <div class="field">
+        <label>Comprobante de transferencia / depósito</label>
+        <div class="upload-zone" onclick="simulateUpload()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <div>Toca para seleccionar imagen</div>
+          <div class="uf-name" id="uploadFileName">Sin archivo seleccionado</div>
+        </div>
+        <input type="file" id="payFile" accept="image/*,.pdf" style="display:none" onchange="fileSelected(this)">
+      </div>
+      <div class="field"><label>Referencia bancaria (opcional)</label><input type="text" id="payRef" placeholder="Últimos 6 dígitos"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modalUploadPayment')">Cancelar</button>
+      <button class="btn btn-primary"   onclick="savePayment()">Enviar comprobante</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import CSV -->
+<div class="modal-overlay" id="modalImport">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Importar transacciones</span><button class="modal-close" onclick="closeModal('modalImport')">✕</button></div>
+    <div class="modal-body">
+      <div class="csv-section">
+        <div class="csv-title">Opciones para cargar datos masivos</div>
+        <div class="csv-desc">Elige cómo prefieres registrar múltiples transacciones</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1.25rem">
+        <div class="card" style="padding:12px;cursor:pointer;border:2px solid var(--c-teal)" onclick="selectImportMethod('csv')">
+          <div style="font-size:13px;font-weight:600;color:var(--c-teal)">📄 Archivo CSV / Excel</div>
+          <div style="font-size:12px;color:var(--c-text-2);margin-top:3px">Columnas: fecha, descripcion, tipo, monto, categoria, referencia</div>
+        </div>
+        <div class="card" style="padding:12px;cursor:pointer" onclick="selectImportMethod('paste')">
+          <div style="font-size:13px;font-weight:600">📋 Pegar desde Excel</div>
+          <div style="font-size:12px;color:var(--c-text-2);margin-top:3px">Copia y pega filas directamente desde tu hoja de cálculo</div>
+        </div>
+        <div class="card" style="padding:12px;cursor:pointer">
+          <div style="font-size:13px;font-weight:600">🔗 Conectar Google Sheets</div>
+          <div style="font-size:12px;color:var(--c-text-2);margin-top:3px">Sincronización automática (requiere integración Supabase)</div>
+        </div>
+        <div class="card" style="padding:12px;cursor:pointer">
+          <div style="font-size:13px;font-weight:600">☁️ Conectar Supabase</div>
+          <div style="font-size:12px;color:var(--c-text-2);margin-top:3px">Base de datos en la nube, acceso desde cualquier dispositivo</div>
+        </div>
+      </div>
+      <div id="importMethodArea"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modalImport')">Cerrar</button>
+      <button class="btn btn-primary" id="btnDoImport" style="display:none" onclick="doImport()">Importar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Resident -->
+<div class="modal-overlay" id="modalAddResident">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Agregar residente</span><button class="modal-close" onclick="closeModal('modalAddResident')">✕</button></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label>Nombre completo</label><input type="text" id="newResName" placeholder="Juan García"></div>
+        <div class="field"><label>Número de depto</label><input type="text" id="newResDepto" placeholder="101"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label>Correo</label><input type="email" id="newResEmail" placeholder="juan@correo.com"></div>
+        <div class="field"><label>Teléfono</label><input type="tel" id="newResPhone" placeholder="+52 555 000 0000"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label>Cuota mensual (MXN)</label><input type="number" id="newResFee" placeholder="1500" value="1500"></div>
+        <div class="field"><label>Estado</label>
+          <select id="newResStatus"><option value="approved">Aprobado</option><option value="pending">Pendiente</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddResident')">Cancelar</button>
+      <button class="btn btn-primary"   onclick="saveNewResident()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Voucher -->
+<div class="modal-overlay" id="modalViewVoucher">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Comprobante de pago</span><button class="modal-close" onclick="closeModal('modalViewVoucher')">✕</button></div>
+    <div class="modal-body" id="voucherBody"></div>
+    <div class="modal-foot" id="voucherFoot"></div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     SCRIPTS
+     ============================================================ -->
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
