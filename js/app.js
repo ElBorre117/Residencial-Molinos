@@ -33,14 +33,17 @@ function verifyOTP() {
 function matchesPassword(user, pass) {
   const candidate = String(pass).trim();
   if (user.pass === candidate || user.password_hash === candidate) return true;
-  return String(user.email).trim().toLowerCase() === 'admin@condominios.mx' &&
-    (candidate === 'hashed_password_123' || candidate === 'hashed_password_12');
+  if (String(user.email).trim().toLowerCase() === 'admin@condominios.mx' &&
+      (candidate === 'hashed_password_123' || candidate === 'hashed_password_12')) {
+    return true;
+  }
+  return false;
 }
 
 function doLogin() {
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
   const pass = document.getElementById('loginPass').value.trim();
-  const user = DB.users.find(u => String(u.email).trim().toLowerCase() === email && matchesPassword(u, pass));
+  const user = DB.users.find(u => String((u.email || '').trim()).toLowerCase() === email && matchesPassword(u, pass));
   if (!user) { showAlert('alertAuth', 'Credenciales incorrectas', 'error'); return; }
   loginUser(user);
 }

@@ -116,6 +116,28 @@ function createSyncArray(table, initialArr) {
   });
 }
 
+function normalizeRemoteRow(table, row) {
+  if (!row || typeof row !== 'object') return row;
+  const normalized = { ...row };
+  if (table === 'users') {
+    if (normalized.password_hash !== undefined && normalized.pass === undefined) {
+      normalized.pass = normalized.password_hash;
+    }
+    if (normalized.depto_status !== undefined && normalized.deptoStatus === undefined) {
+      normalized.deptoStatus = normalized.depto_status;
+    }
+    if (normalized.user_id !== undefined && normalized.userId === undefined) {
+      normalized.userId = normalized.user_id;
+    }
+  }
+  if (table === 'residents') {
+    if (normalized.user_id !== undefined && normalized.userId === undefined) {
+      normalized.userId = normalized.user_id;
+    }
+  }
+  return normalized;
+}
+
 function mergeFallback(remoteArr, localArr, keyFn) {
   if (!Array.isArray(remoteArr) || remoteArr.length === 0) return localArr.slice();
   const seen = new Set(remoteArr.map(item => keyFn(item)).filter(Boolean));
@@ -143,12 +165,19 @@ const DB = {
           window.SUPABASE.list('payments'),
           window.SUPABASE.list('finances')
         ]);
-        // Merge remote data with fallback local entries so sample accounts remain available.
-        this.users = createSyncArray('users', mergeFallback(users || [], _local.users, u => String(u.email).trim().toLowerCase()));
-        this.residents = createSyncArray('residents', mergeFallback(residents || [], _local.residents, r => String(r.email || r.id).trim().toLowerCase()));
+
+        const normalizedUsers = Array.isArray(users)
+          ? users.map(u => normalizeRemoteRow('users', u))
+          : [];
+        const normalizedResidents = Array.isArray(residents)
+          ? residents.map(r => normalizeRemoteRow('residents', r))
+          : [];
+
+        this.users = createSyncArray('users', mergeFallback(normalizedUsers, _local.users, u => String(u.email).trim().toLowerCase()));
+        this.residents = createSyncArray('residents', mergeFallback(normalizedResidents, _local.residents, r => String(r.email || r.id).trim().toLowerCase()));
         this.payments = createSyncArray('payments', payments || []);
         this.finances = createSyncArray('finances', finances || []);
-        console.info('DB initialized from Supabase');
+        console.info(`DB initialized from Supabase: users=${normalizedUsers.length}, residents=${normalizedResidents.length}, payments=${(payments || []).length}, finances=${(finances || []).length}`);
       } catch (err) {
         console.warn('Failed to load from Supabase, using local data', err);
       }
