@@ -40,10 +40,43 @@ function matchesPassword(user, pass) {
   return false;
 }
 
-function doLogin() {
+async function tryRemoteLogin(email, pass) {
+  try {
+    const client = (window.SUPABASE && typeof window.SUPABASE.client === 'function') ? window.SUPABASE.client() : null;
+    if (!client) return null;
+    // Use select('*') to avoid requesting columns that may not exist (e.g. 'pass')
+    const { data, error } = await client.from('users').select('*').eq('email', email).limit(1);
+    if (error) {
+      console.warn('Remote user fetch error', error);
+      return null;
+    }
+    const u = Array.isArray(data) && data[0] ? data[0] : null;
+    if (!u) return null;
+    // normalize
+    if (!u.pass && u.password_hash) u.pass = u.password_hash;
+    if (!u.deptoStatus && u.depto_status) u.deptoStatus = u.depto_status;
+    if (matchesPassword(u, pass)) return u;
+    return null;
+  } catch (err) {
+    console.error('tryRemoteLogin failed', err);
+    return null;
+  }
+}
+
+async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
   const pass = document.getElementById('loginPass').value.trim();
-  const user = DB.users.find(u => String((u.email || '').trim()).toLowerCase() === email && matchesPassword(u, pass));
+  // First try local DB cache
+  let user = DB.users.find(u => String((u.email || '').trim()).toLowerCase() === email && matchesPassword(u, pass));
+  // If nothing found and Supabase client is configured, attempt remote lookup
+  if (!user) {
+    const remote = await tryRemoteLogin(email, pass);
+    if (remote) {
+      // push into DB array so rest of app can use it
+      try { DB.users.push(remote); } catch (e) { /* ignore push errors if array is proxied */ }
+      user = remote;
+    }
+  }
   if (!user) { showAlert('alertAuth', 'Credenciales incorrectas', 'error'); return; }
   loginUser(user);
 }

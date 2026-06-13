@@ -21,11 +21,11 @@ Abre `index.html` con doble clic. Funciona sin instalar nada.
 
 ## Cuentas de demo
 
-| Correo                   | Contraseña            | Rol                   |
-| ------------------------ | --------------------- | --------------------- |
-| admin@condo.com          | admin123              | Administrador         |
-| admin@condominios.mx     | hashed_password_123   | Administrador         |
-| admin2@condo.com         | res123                | Residente (depto 101) |
+| Correo               | Contraseña          | Rol                   |
+| -------------------- | ------------------- | --------------------- |
+| admin@condo.com      | admin123            | Administrador         |
+| admin@condominios.mx | hashed_password_123 | Administrador         |
+| admin2@condo.com     | res123              | Residente (depto 101) |
 
 ---
 
@@ -40,7 +40,7 @@ condoadmin/
 │   └── styles.css      ← Todos los estilos de la app
 │
 ├── js/
-│   ├── data.js         ← Datos de demo (usuarios, pagos, finanzas)
+│   ├── data.js         ← Conexión y sincronización con Supabase
 │   └── app.js          ← Toda la lógica de la aplicación
 │
 ├── assets/             ← Imágenes, logos, firma (vacío por ahora)
@@ -83,11 +83,11 @@ Edita la línea en `index.html`:
 
 ### Agregar residentes reales
 
-Edita el arreglo `residents` en `js/data.js`.
+Agrega o edita residentes directamente en la tabla `residents` de Supabase.
 
 ### Cambiar la cuota mensual por defecto
 
-En `js/data.js` cambia el valor `fee` de cada residente.
+Actualiza el campo `fee` en Supabase para cada residente.
 
 ---
 
@@ -96,12 +96,9 @@ En `js/data.js` cambia el valor `fee` de cada residente.
 Cuando quieras que los datos persistan en la nube:
 
 1. Crea una cuenta en [supabase.com](https://supabase.com) (gratis)
-2. Crea las tablas: `perfiles`, `pagos`, `finanzas`, `recibos`
-3. Reemplaza el objeto `DB` en `js/data.js` por llamadas a Supabase:
-   ```js
-   const { data } = await supabase.from("pagos").select("*");
-   ```
-4. Activa Auth de Supabase (correo + teléfono OTP) para reemplazar el login actual
+2. Crea las tablas: `users`, `residents`, `payments`, `finances`
+3. Usa la key `anon` y la URL de tu proyecto en `index.html` dentro de `window.SUPABASE_CONFIG`.
+4. Activa Auth de Supabase (correo + teléfono OTP) si quieres reemplazar el login manual.
 
 ---
 

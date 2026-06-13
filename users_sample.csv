@@ -1,3 +1,0 @@
-id,name,email,password_hash,role,phone,depto,depto_status,fee,created_at
-1,Admin Sistema,admin@condominios.mx,hashed_password_123,admin,5551234567,,active,0,2026-06-13T00:00:00Z
-2,Juan García,juan.garcia@gmail.com,hashed_password_456,resident,5559876543,101,active,1500,2026-06-13T00:00:00Z
