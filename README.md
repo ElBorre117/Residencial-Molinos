@@ -21,10 +21,11 @@ Abre `index.html` con doble clic. Funciona sin instalar nada.
 
 ## Cuentas de demo
 
-| Correo           | Contraseña | Rol                   |
-| ---------------- | ---------- | --------------------- |
-| admin@condo.com  | admin123   | Administrador         |
-| admin2@condo.com | res123     | Residente (depto 101) |
+| Correo                   | Contraseña            | Rol                   |
+| ------------------------ | --------------------- | --------------------- |
+| admin@condo.com          | admin123              | Administrador         |
+| admin@condominios.mx     | hashed_password_123   | Administrador         |
+| admin2@condo.com         | res123                | Residente (depto 101) |
 
 ---
 
