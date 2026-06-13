@@ -36,24 +36,24 @@ function verifyOTP() {
 
 function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
-  const pass  = document.getElementById('loginPass').value;
-  const user  = DB.users.find(u => u.email === email && u.pass === pass);
+  const pass = document.getElementById('loginPass').value;
+  const user = DB.users.find(u => u.email === email && (u.pass === pass || u.password_hash === pass));
   if (!user) { showAlert('alertAuth', 'Credenciales incorrectas', 'error'); return; }
   loginUser(user);
 }
 
 function doRegister() {
-  const name  = document.getElementById('regName').value.trim();
+  const name = document.getElementById('regName').value.trim();
   const email = document.getElementById('regEmail').value.trim();
   const phone = document.getElementById('regPhone').value.trim();
-  const pass  = document.getElementById('regPass').value;
+  const pass = document.getElementById('regPass').value;
   if (!name || !email || !pass) {
     showAlert('alertAuth', 'Completa todos los campos requeridos', 'error');
     return;
   }
   const newUser = { id: DB.nextId++, name, email, pass, phone, role: 'resident', depto: null, deptoStatus: 'pending', fee: 1500 };
   DB.users.push(newUser);
-  const newRes  = { id: DB.nextId++, name, email, phone, depto: '—', status: 'pending', fee: 1500, userId: newUser.id };
+  const newRes = { id: DB.nextId++, name, email, phone, depto: '—', status: 'pending', fee: 1500, userId: newUser.id };
   DB.residents.push(newRes);
   showAlert('alertAuth', 'Cuenta creada. El administrador verificará tu departamento.', 'info');
   switchAuth('login');
